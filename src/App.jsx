@@ -247,11 +247,32 @@ export default function App() {
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(null);
 
   useEffect(() => {
     try {
       const r = storage.get(STORAGE_KEY);
-      setEvents(r?.value ? JSON.parse(r.value) : []);
+      if (r?.value) {
+        setEvents(JSON.parse(r.value));
+      } else {
+        const seed = [
+          { id: 1, name: "Chouchou", location: "", date: "2025-03-09", days: 1, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 5291, notes: "", bills: [], billsCost: 0 },
+          { id: 2, name: "Pop Up Esch", location: "Esch", date: "2025-10-15", days: 3, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 3382, notes: "", bills: [], billsCost: 0 },
+          { id: 3, name: "Zolwer Moart", location: "", date: "2025-07-13", days: 1, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 5171.5, notes: "", bills: [], billsCost: 0 },
+          { id: 4, name: "Braderie", location: "", date: "2025-08-01", days: 1, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 2746, notes: "", bills: [], billsCost: 0 },
+          { id: 5, name: "Pop Up Esch", location: "Esch", date: "2025-10-28", days: 4, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 2650, notes: "28-31 oct", bills: [], billsCost: 0 },
+          { id: 6, name: "Pop Up", location: "", date: "2025-11-11", days: 9, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 1899, notes: "11-19 nov", bills: [], billsCost: 0 },
+          { id: 7, name: "Pop Up", location: "", date: "2025-11-01", days: 1, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 4549, notes: "", bills: [], billsCost: 0 },
+          { id: 8, name: "Chouchou", location: "", date: "2025-11-23", days: 1, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 4989, notes: "", bills: [], billsCost: 0 },
+          { id: 9, name: "Mudam", location: "Mudam", date: "2025-12-05", days: 3, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 10983.8, notes: "5-7 déc · caisse: 8237.5", bills: [], billsCost: 0 },
+          { id: 10, name: "Pop UP Noël", location: "", date: "2025-11-30", days: 25, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 17294.55, notes: "30 nov – 24 déc", bills: [], billsCost: 0 },
+          { id: 11, name: "Chouchou", location: "", date: "2026-03-09", days: 1, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 4569, notes: "", bills: [], billsCost: 0 },
+          { id: 12, name: "Pop Up Esch", location: "Esch", date: "2026-03-10", days: 6, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 2969, notes: "10-15 mars", bills: [], billsCost: 0 },
+          { id: 13, name: "Pop Up act'l pons", location: "", date: "2026-03-21", days: 8, venueCost: 0, travelCost: 0, otherCost: 0, variablePct: 0, revenue: 3614, notes: "21-28 mars", bills: [], billsCost: 0 },
+        ];
+        setEvents(seed);
+        storage.set(STORAGE_KEY, JSON.stringify(seed));
+      }
     } catch { setEvents([]); }
     try {
       const r = storage.get(CAL_KEY);
@@ -360,31 +381,61 @@ export default function App() {
         {tab === "overview" && events.length > 0 && (() => {
           const map = {};
           filtered.forEach(e => {
-            if (!map[e.name]) map[e.name] = { name: e.name, revenue: 0, cost: 0, profit: 0, count: 0 };
+            if (!map[e.name]) map[e.name] = { name: e.name, revenue: 0, cost: 0, profit: 0, count: 0, events: [] };
             map[e.name].revenue += e.revenue || 0;
             map[e.name].cost += totalCost(e);
             map[e.name].profit += profit(e);
             map[e.name].count++;
+            map[e.name].events.push(e);
           });
           const chart = Object.values(map).sort((a, b) => b.profit - a.profit);
           const maxV = Math.max(...chart.map(d => d.revenue), 1);
           const ranked = [...filtered].sort((a, b) => profit(b) - profit(a));
           return (
             <div>
-              {chart.map(d => (
-                <div key={d.name} style={{ background: "#fff", borderRadius: 12, padding: 14, border, marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, color: dark }}>{d.name} <span style={{ fontSize: 11, color: muted, fontFamily: "sans-serif" }}>({d.count}×)</span></span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: d.profit >= 0 ? green : pink, fontFamily: "sans-serif" }}>{fmt(d.profit)}</span>
-                  </div>
-                  {[["CA", d.revenue, dark], ["Coûts", d.cost, amber]].map(([l, v, c]) => (
-                    <div key={l} style={{ marginBottom: 6 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: muted, fontFamily: "sans-serif", marginBottom: 2 }}><span>{l}</span><span>{fmt(v)}</span></div>
-                      <div style={{ background: beige, borderRadius: 4, height: 7 }}><div style={{ height: 7, width: (v / maxV * 100) + "%", background: c, borderRadius: 4 }} /></div>
+              {chart.map(d => {
+                const isOpen = expandedCard === d.name;
+                const sortedEvents = [...d.events].sort((a, b) => a.date > b.date ? 1 : -1);
+                return (
+                <div key={d.name} style={{ background: "#fff", borderRadius: 12, border, marginBottom: 12, overflow: "hidden" }}>
+                  <div onClick={() => setExpandedCard(isOpen ? null : d.name)} style={{ padding: 14, cursor: "pointer" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, alignItems: "center" }}>
+                      <span style={{ fontSize: 14, color: dark }}>{d.name} <span style={{ fontSize: 11, color: muted, fontFamily: "sans-serif" }}>({d.count}×)</span></span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: d.profit >= 0 ? green : pink, fontFamily: "sans-serif" }}>{fmt(d.profit)}</span>
+                        <span style={{ fontSize: 12, color: muted, fontFamily: "sans-serif" }}>{isOpen ? "▲" : "▼"}</span>
+                      </div>
                     </div>
-                  ))}
+                    {[["CA", d.revenue, dark], ["Coûts", d.cost, amber]].map(([l, v, c]) => (
+                      <div key={l} style={{ marginBottom: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: muted, fontFamily: "sans-serif", marginBottom: 2 }}><span>{l}</span><span>{fmt(v)}</span></div>
+                        <div style={{ background: beige, borderRadius: 4, height: 7 }}><div style={{ height: 7, width: (v / maxV * 100) + "%", background: c, borderRadius: 4 }} /></div>
+                      </div>
+                    ))}
+                  </div>
+                  {isOpen && (
+                    <div style={{ borderTop: `1px solid rgba(26,26,26,0.08)`, background: cream, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      {sortedEvents.map(ev => {
+                        const p = profit(ev);
+                        return (
+                          <div key={ev.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", borderRadius: 8, padding: "8px 12px", border }}>
+                            <div>
+                              <div style={{ fontSize: 12, color: dark, fontFamily: "sans-serif" }}>{ev.date}{ev.notes ? <span style={{ color: muted }}> · {ev.notes}</span> : ""}</div>
+                              {ev.days > 1 && <div style={{ fontSize: 10, color: muted, fontFamily: "sans-serif" }}>{ev.days} jours</div>}
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: dark, fontFamily: "sans-serif" }}>{fmt(ev.revenue || 0)} CA</div>
+                              {totalCost(ev) > 0 && <div style={{ fontSize: 10, color: amber, fontFamily: "sans-serif" }}>− {fmt(totalCost(ev))} coûts</div>}
+                              <div style={{ fontSize: 12, fontWeight: 700, color: p >= 0 ? green : pink, fontFamily: "sans-serif" }}>{fmt(p)} bénéfice</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
               <div style={{ fontSize: 15, color: dark, margin: "20px 0 12px" }}>Classement — du meilleur au moins bon</div>
               {ranked.map((e, i) => {
                 const p = profit(e);
